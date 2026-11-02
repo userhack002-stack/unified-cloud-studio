@@ -14,8 +14,8 @@
   "free_ai_routing": {
     "provider": "openrouter_or_gemini_free",
     "openrouter_base_url": "https://openrouter.ai/api/v1",
-    "script_model_free": "meta-llama/llama-3.3-70b-instruct:free",
-    "fallback_model_free": "google/gemini-2.0-flash-exp:free",
+    "script_model_free": "nvidia/llama-nemotron-rerank-vl-1b-v2:free",
+    "fallback_model_free": "google/gemma-4-26b-a4b-it:free",
     "gemini_direct_model": "gemini-2.5-flash"
   },
   "kaggle_gpu_offload": {
