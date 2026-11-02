@@ -1,8 +1,8 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Shared Cloud Core for Unified 4-in-1 Studio.
 Handles:
-1. Cloud-Only Guard & Config Loader
+1. Cloud-Only Guard & Config Loader (Fixed with utf-8-sig for BOM handling)
 2. 100% Free LLM Router (Gemini API Free -> OpenRouter :free -> Deterministic Offline Fallback)
 3. Anti-AI Slop Scrubber (from shahed1475-Studio voice-rules.md)
 4. 5-Stage Heartbeat Script Generator & Prompt Logger (from kaomei)
@@ -34,7 +34,8 @@ FORBIDDEN_AI_WORDS = [
 ]
 
 def load_config():
-    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    # यहाँ 'utf-8-sig' का उपयोग किया गया है ताकि JSONDecodeError कभी न आए
+    return json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
 
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -47,7 +48,7 @@ def scrub_ai_slop(text: str) -> str:
     cleaned = text
     for word in FORBIDDEN_AI_WORDS:
         cleaned = re.sub(rf"\b{re.escape(word)}\b", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\s{2,}", " ", cleaned).replace("â€”", ", ")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).replace("—", ", ")
     return cleaned.strip()
 
 def call_free_llm(prompt: str, cfg: dict) -> str:
@@ -98,10 +99,6 @@ def call_free_llm(prompt: str, cfg: dict) -> str:
     return ""
 
 def generate_5stage_package(engine_id: str, cfg: dict, out_dir: Path) -> dict:
-    """
-    Generates a 6-beat (5-Stage Heartbeat Engine) script + visual prompts + SFX cues.
-    Logs everything visibly to stdout (for GitHub Actions tab visibility) and saves to disk.
-    """
     topic_cfg = cfg["global_topic"]
     topic = topic_cfg["topic"]
 
@@ -134,7 +131,6 @@ Return ONLY valid JSON with this exact schema:
                 package = None
 
     if not package or not isinstance(package.get("beats"), list) or len(package["beats"]) < 6:
-        # High-craft deterministic fallback tailored to the configured topic
         package = {
             "title": "Why 90% of Traders Freeze at the Worst Second",
             "thumbnail_text": "FROZEN AT ZERO",
@@ -199,7 +195,6 @@ Return ONLY valid JSON with this exact schema:
     for b in package["beats"]:
         b["text"] = scrub_ai_slop(b["text"])
 
-    # Print visibly to GitHub Actions console tab!
     print("\n" + "=" * 72, flush=True)
     print(f" LIVE SCRIPT & PROMPTS FOR ENGINE: {engine_id}", flush=True)
     print(f" TITLE: {package['title']}  |  THUMBNAIL: {package['thumbnail_text']}", flush=True)
@@ -230,10 +225,6 @@ Return ONLY valid JSON with this exact schema:
     return package
 
 def synthesize_voice_and_tokens(package: dict, out_dir: Path, voice_engine="kokoro_82m_cpu", voice_name="am_michael", speed=0.98):
-    """
-    Synthesizes narration and extracts exact word-level timestamps.
-    Uses Kokoro-82M CPU (from StickTwist) when selected/available, falling back cleanly to Edge-TTS / espeak-ng.
-    """
     import numpy as np
     import soundfile as sf
 
@@ -286,7 +277,6 @@ def synthesize_voice_and_tokens(package: dict, out_dir: Path, voice_engine="koko
                 segment = np.concatenate(arrays)
 
         if segment is None:
-            # Edge-TTS or espeak-ng fallback
             tmp_mp3 = out_dir / f"beat_{i}.mp3"
             tmp_wav = out_dir / f"beat_{i}.wav"
             edge_ok = False
@@ -311,7 +301,6 @@ def synthesize_voice_and_tokens(package: dict, out_dir: Path, voice_engine="koko
 
         spoken_secs = len(segment) / sr
         if not beat_tokens:
-            # Proportional character-weighted token timing if native tokens weren't returned
             words = text.split()
             weights = [max(1, len(re.sub(r"\W", "", w))) for w in words]
             total_w = sum(weights) or 1
@@ -347,7 +336,6 @@ def synthesize_voice_and_tokens(package: dict, out_dir: Path, voice_engine="koko
         "-af", "loudnorm=I=-16:TP=-1.5:LRA=7", "-ar", str(sr), "-ac", "1", str(clean_wav)
     ], check=True)
 
-    # Procedural Music & SFX with Sidechain Auto-Ducking (from StickTwist audio_auditions.py)
     total_secs = clock
     n_samples = round(total_secs * sr)
     bed = np.zeros(n_samples, dtype=np.float32)
