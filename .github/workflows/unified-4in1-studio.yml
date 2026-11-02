@@ -37,27 +37,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  prepare-matrix:
-    name: "00 â€¢ Select Active Engines"
+prepare-matrix:
+    name: "00 • Select Active Engines"
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-      - id: set-matrix
-         shell: bash
+      - name: Set Matrix Active Engines
+        id: set-matrix
+        shell: bash
         run: |
           python3 - << 'EOF'
           import json, os
           items = []
           if "${{ inputs.run_01_studio }}" == "true":
-              items.append({"id": "01_studio", "label": "Part 1 â€¢ Studio (2.5D Documentary)"})
+              items.append({"id": "01_studio", "label": "Part 1 • Studio (2.5D Documentary)"})
           if "${{ inputs.run_02_sticktwist }}" == "true":
-              items.append({"id": "02_sticktwist", "label": "Part 2 â€¢ StickTwist (Paper Cutout IK)"})
+              items.append({"id": "02_sticktwist", "label": "Part 2 • StickTwist (Paper Cutout IK)"})
           if "${{ inputs.run_03_kaomei }}" == "true":
-              items.append({"id": "03_kaomei", "label": "Part 3 â€¢ Kaomei (Hand-Drawn + A6 Pop)"})
+              items.append({"id": "03_kaomei", "label": "Part 3 • Kaomei (Hand-Drawn + A6 Pop)"})
           if "${{ inputs.run_04_fusion }}" == "true":
-              items.append({"id": "04_fusion", "label": "Part 4 â€¢ Ultimate Fusion (All-in-One)"})
+              items.append({"id": "04_fusion", "label": "Part 4 • Ultimate Fusion (All-in-One)"})
+          if not items:
+              items.append({"id": "04_fusion", "label": "Part 4 • Ultimate Fusion (All-in-One)"})
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"matrix={json.dumps({'include': items})}\n")
           EOF
