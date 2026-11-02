@@ -1,0 +1,72 @@
+﻿{
+  "project_name": "Unified-4in1-Cloud-Studio",
+  "publish_to_youtube": false,
+  "save_to_github_draft_release": true,
+  "save_raw_footage_and_prompts": true,
+  "global_topic": {
+    "topic": "The Psychology of Risk: Why 90% of Traders Lose Their Nerve at the Exact Wrong Moment",
+    "niche": "Trading Psychology & Behavioral Finance",
+    "format": "short",
+    "aspect_ratio": "9:16",
+    "target_duration_seconds": 48,
+    "language": "en"
+  },
+  "free_ai_routing": {
+    "provider": "openrouter_or_gemini_free",
+    "openrouter_base_url": "https://openrouter.ai/api/v1",
+    "script_model_free": "meta-llama/llama-3.3-70b-instruct:free",
+    "fallback_model_free": "google/gemini-2.0-flash-exp:free",
+    "gemini_direct_model": "gemini-2.5-flash"
+  },
+  "kaggle_gpu_offload": {
+    "enabled": false,
+    "kaggle_username": "YOUR_KAGGLE_USERNAME",
+    "kernel_slug": "unified-studio-depth-and-flux-renderer",
+    "use_for_depth_maps_and_sdxl": true
+  },
+  "engines_customization": {
+    "01_studio": {
+      "enabled": true,
+      "style": "documentary_parallax",
+      "voice_engine": "edge_tts",
+      "voice_id": "en-US-ChristopherNeural",
+      "parallax_2_5d": true,
+      "flat_gentle_zoom_for_people": true,
+      "target_lufs": -16.0,
+      "enforce_anti_ai_words": true,
+      "wikipedia_grounding": true
+    },
+    "02_sticktwist": {
+      "enabled": true,
+      "style": "paper_cutout_ik_rig",
+      "voice_engine": "kokoro_82m_cpu",
+      "kokoro_voice": "am_michael",
+      "kokoro_speed": 0.98,
+      "character_hero_shirt": "#59817e",
+      "character_friend_shirt": "#d77750",
+      "paper_grain_intensity": 0.065,
+      "music_mood": "suspense",
+      "auto_duck_music": true
+    },
+    "03_kaomei": {
+      "enabled": true,
+      "mode": "B_Autopilot_plus_A6_Finish",
+      "style": "B2",
+      "theme": "warm_paper_handdrawn",
+      "max_static_seconds": 2.5,
+      "a6_karaoke_pop_captions": true,
+      "a6_active_word_color": "#FFCB4A",
+      "procedural_sfx": ["tap", "paper", "pop", "chime", "jingle"]
+    },
+    "04_fusion": {
+      "enabled": true,
+      "description": "Best of All 3: Studio Fact-Checked 5-Stage Script + Kokoro-82M Token Timestamps + StickTwist 2-Bone IK Paper Rig + Studio 2.5D Parallax Depth + Kaomei A6 3-Frame Pop Karaoke Subtitles + Procedural Auto-Ducked SFX",
+      "voice_engine": "kokoro_82m_cpu",
+      "kokoro_voice": "am_michael",
+      "kokoro_speed": 0.98,
+      "visual_engine": "hybrid_ik_puppet_plus_parallax",
+      "caption_engine": "kaomei_a6_amber_pop",
+      "audio_mastering_lufs": -16.0
+    }
+  }
+}

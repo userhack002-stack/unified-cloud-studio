@@ -1,0 +1,136 @@
+﻿name: 4-in-1 Cloud Video Studio (Sequential, Fault-Tolerant, Preview Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_01_studio:
+        description: 'Run Part 1: shahed1475-Studio (2.5D Documentary Parallax)'
+        required: false
+        default: true
+        type: boolean
+      run_02_sticktwist:
+        description: 'Run Part 2: porkikk2-StickTwist (Paper Cutout 2-Bone IK Rig)'
+        required: false
+        default: true
+        type: boolean
+      run_03_kaomei:
+        description: 'Run Part 3: kaomei-Director (Hand-Drawn + A6 Pop Karaoke)'
+        required: false
+        default: true
+        type: boolean
+      run_04_fusion:
+        description: 'Run Part 4: Ultimate Fusion (All 3 Combined & Upgraded)'
+        required: false
+        default: true
+        type: boolean
+      custom_topic:
+        description: 'Optional: Override video topic for this run (leave blank to use config/master-config.json)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: unified-4in1-studio-queue
+  cancel-in-progress: false
+
+jobs:
+  prepare-matrix:
+    name: "00 â€¢ Select Active Engines"
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+         shell: bash
+        run: |
+          python3 - << 'EOF'
+          import json, os
+          items = []
+          if "${{ inputs.run_01_studio }}" == "true":
+              items.append({"id": "01_studio", "label": "Part 1 â€¢ Studio (2.5D Documentary)"})
+          if "${{ inputs.run_02_sticktwist }}" == "true":
+              items.append({"id": "02_sticktwist", "label": "Part 2 â€¢ StickTwist (Paper Cutout IK)"})
+          if "${{ inputs.run_03_kaomei }}" == "true":
+              items.append({"id": "03_kaomei", "label": "Part 3 â€¢ Kaomei (Hand-Drawn + A6 Pop)"})
+          if "${{ inputs.run_04_fusion }}" == "true":
+              items.append({"id": "04_fusion", "label": "Part 4 â€¢ Ultimate Fusion (All-in-One)"})
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps({'include': items})}\n")
+          EOF
+
+  run-engines-sequentially:
+    needs: prepare-matrix
+    if: ${{ fromJson(needs.prepare-matrix.outputs.matrix).include[0] != null }}
+    name: "${{ matrix.label }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      # CRITICAL: fail-fast: false ensures if 1 engine errors, the remaining engines STILL RUN!
+      # max-parallel: 1 ensures they run strictly ONE BY ONE so zero API/CPU limits are exceeded!
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11 & Node.js 20
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Free Cloud Media & Neural Audio Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng libsndfile1 fonts-dejavu-core
+          python -m pip install --upgrade pip
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install kokoro==0.9.4 soundfile==0.13.1 numpy==2.2.6 Pillow==11.3.0 edge-tts
+
+      - name: Override Topic if Provided in Dispatch Input
+        if: ${{ inputs.custom_topic != '' }}
+        run: |
+          python3 - << 'EOF'
+          import json
+          from pathlib import Path
+          p = Path("config/master-config.json")
+          cfg = json.loads(p.read_text(encoding="utf-8"))
+          cfg["global_topic"]["topic"] = """${{ inputs.custom_topic }}"""
+          p.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+          EOF
+
+      - name: Execute ${{ matrix.id }} (Live Script, Prompts, Audio & Video Render)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          python -u scripts/run_engine.py --engine "${{ matrix.id }}"
+
+      - name: Upload Individual Preview Bundle (Video + Script + Prompts + Footage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Preview-${{ matrix.id }}-Run-${{ github.run_id }}
+          path: outputs/${{ matrix.id }}/
+          retention-days: 14
+
+      - name: Save to Unpublished GitHub Draft Release (Permanent Free Cloud Storage)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="preview-run-${{ github.run_id }}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --draft --title "Studio Previews (Run #${{ github.run_id }})" \
+            --notes "Unpublished preview videos, scripts, prompts, and contact sheets. YouTube upload is DISABLED."
+          for f in outputs/${{ matrix.id }}/*.mp4 outputs/${{ matrix.id }}/*.txt outputs/${{ matrix.id }}/*.jpg outputs/${{ matrix.id }}/*.json; do
+            [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber
+          done
